@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HedgeFlow Workstation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0A0D; --surface:#141417; --surface-2:#1B1B20; --surface-3:#232329;
+    --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.16);
+    --text:#F2F2F5; --text-2:#9C9CA6; --text-3:#6C6C76;
+    --accent:#3AA9FF; --accent-soft: rgba(58,169,255,.14);
+    --profit:#33D68A; --profit-soft: rgba(51,214,138,.14);
+    --loss:#FF5C6C; --loss-soft: rgba(255,92,108,.14);
+    --amber:#F2B84B;
+    --radius-lg:20px; --radius-md:12px; --radius-sm:8px;
+    --shadow: 0 12px 40px rgba(0,0,0,.5);
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --sans:'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+  body{-webkit-font-smoothing:antialiased;}
+  
+  .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh;}
+  @media (max-width:960px){ .app{grid-template-columns:1fr;} }
+
+  /* Sidebar */
+  .sidebar{background:linear-gradient(180deg, var(--surface), var(--bg));border-right:1px solid var(--border);
+    padding:28px 18px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;z-index:10;}
+  @media (max-width:960px){ .sidebar{position:relative;height:auto;flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:16px;} }
+  
+  .brand{display:flex;align-items:center;gap:10px;padding:2px 6px;}
+  .brand .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),#7C4DFF);flex:none;box-shadow:0 0 12px rgba(58,169,255,0.4);}
+  .brand .name{font-weight:800;font-size:18px;letter-spacing:-.02em;color:var(--text);}
+  
+  .nav{display:flex;flex-direction:column;gap:4px;width:100%;}
+  @media (max-width:960px){
+    .nav{flex-direction:row;flex-wrap:nowrap;width:100%;overflow-x:auto;gap:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none;order:3;}
+    .nav::-webkit-scrollbar{display:none;}
+    .nav button{flex:none;white-space:nowrap;}
+  }
+  .nav button{all:unset;box-sizing:border-box;cursor:pointer;padding:11px 14px;border-radius:var(--radius-sm);font-size:13.5px;color:var(--text-2);
+    display:flex;align-items:center;gap:11px;font-weight:600;transition:all .15s ease;}
+  .nav button svg{width:16px;height:16px;flex:none;opacity:.7;}
+  @media (max-width:640px){ .nav button{padding:10px 12px;font-size:12.5px;gap:7px;} .nav button svg{width:14px;height:14px;} }
+  .nav button:hover{background:var(--surface-2);color:var(--text);}
+  .nav button.active{background:var(--accent-soft);color:var(--accent);border:1px solid rgba(58,169,255,0.2);}
+  .nav button.active svg{stroke:var(--accent);opacity:1;}
+  
+  .sidebar-foot{margin-top:auto;padding:12px 6px 0;}
+  .fx-badge{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--text-2);padding:7px 12px;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:20px;width:fit-content;}
+  .fx-dot{width:7px;height:7px;border-radius:50%;background:var(--text-3);}
+  .fx-dot.live{background:var(--profit);box-shadow:0 0 10px var(--profit);}
+  .fx-dot.cached{background:var(--amber);}
+  .fx-dot.offline{background:var(--loss);}
+
+  /* Main Container */
+  .main{padding:36px 40px 70px;max-width:1240px;}
+  @media (max-width:640px){ .main{padding:20px 16px 50px;} }
+  .view{display:none;}
+  .view.active{display:block;animation:fade .2s ease-out;}
+  @keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .page-head{margin-bottom:28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .page-head h1{font-size:26px;margin:0;font-weight:800;letter-spacing:-.02em;}
+
+  /* Grid & Cards */
+  .grid{display:grid;gap:18px;}
+  .cols-2{grid-template-columns:1fr 1fr;} 
+  .cols-3{grid-template-columns:repeat(3,1fr);} 
+  .cols-4{grid-template-columns:repeat(4,1fr);}
+  @media (max-width:900px){ .cols-2,.cols-3,.cols-4{grid-template-columns:1fr 1fr;} }
+  @media (max-width:640px){ .cols-2,.cols-3,.cols-4{grid-template-columns:1fr;} }
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px 24px;box-shadow:var(--shadow);max-width:100%;}
+  .card h3{margin:0 0 16px;font-size:13.5px;color:var(--text-2);font-weight:700;letter-spacing:.02em;text-transform:uppercase;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  @media (max-width:640px){ .card{padding:16px 16px;} .page-head h1{font-size:21px;} }
+
+  .field{margin-bottom:14px;} .field:last-child{margin-bottom:0;}
+  .field label{display:block;font-size:12px;color:var(--text-2);margin-bottom:6px;font-weight:600;}
+  
+  input[type=number], input[type=text], textarea, select{
+    width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:11px 13px;border-radius:var(--radius-sm);font-family:var(--sans);font-size:13.5px;transition:all .15s ease;}
+  textarea{resize:vertical;min-height:70px;}
+  input:focus, textarea:focus, select:focus{outline:none;border-color:var(--accent);background:var(--surface-3);box-shadow:0 0 0 3px var(--accent-soft);}
+  input::placeholder, textarea::placeholder{color:var(--text-3);}
+  
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;} 
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;} 
+  .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .row-align-end{align-items:end;}
+  @media (max-width:640px){ .row2,.row3,.row4{grid-template-columns:1fr;} }
+
+  /* Segmented Control Switch */
+  .seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:3px;gap:2px;width:100%;height:38px;}
+  .seg button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;min-width:0;text-align:center;padding:0 10px;font-size:12px;font-weight:700;border-radius:6px;color:var(--text-2);transition:all .15s ease;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .seg button:hover{color:var(--text);}
+  .seg button.active{background:var(--accent);color:#04141F;box-shadow:0 2px 8px rgba(58,169,255,0.3);}
+  .seg.dir-seg button.active[data-val="LONG"]{background:var(--profit);color:#031E10;box-shadow:0 2px 8px rgba(51,214,138,0.3);}
+  .seg.dir-seg button.active[data-val="SHORT"]{background:var(--loss);color:#2A0508;box-shadow:0 2px 8px rgba(255,92,108,0.3);}
+
+  /* Action Buttons */
+  .btn{all:unset;box-sizing:border-box;cursor:pointer;background:var(--accent);color:#03131E;font-weight:700;font-size:13.5px;
+    height:40px;padding:0 18px;border-radius:var(--radius-sm);text-align:center;transition:all .15s ease;display:inline-flex;align-items:center;justify-content:center;gap:6px;max-width:100%;white-space:nowrap;}
+  .btn:hover{filter:brightness(1.15);transform:translateY(-1px);} 
+  .btn:active{transform:scale(.98);}
+  .btn.ghost{background:transparent;border:1px solid var(--border-strong);color:var(--text);}
+  .btn.ghost:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+  .btn.small{height:30px;padding:0 12px;font-size:11.5px;border-radius:6px;}
+  .btn.danger{background:var(--loss);color:#2A0508;}
+  .btn.danger:hover{filter:brightness(1.1);}
+  .btn.success{background:var(--profit);color:#031E10;}
+  .btn.full{width:100%;}
+
+  /* Stats Cards */
+  .stat{display:flex;flex-direction:column;gap:6px;padding:16px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow);}
+  .stat .k{font-size:11.5px;color:var(--text-2);font-weight:600;} 
+  .stat .v{font-family:var(--mono);font-size:20px;font-weight:700;}
+  .v.pos{color:var(--profit);} .v.neg{color:var(--loss);} .v.neu{color:var(--text);} .v.acc{color:var(--accent);}
+
+  /* Tables */
+  .table-wrap{width:100%;overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border);}
+  table{width:100%;border-collapse:collapse;font-size:13px;text-align:left;}
+  thead th{background:var(--surface-2);font-size:11px;color:var(--text-3);padding:10px 12px;border-bottom:1px solid var(--border);font-weight:700;text-transform:uppercase;}
+  tbody td{padding:12px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);color:var(--text);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.clickable{cursor:pointer;transition:background .15s ease;}
+  tbody tr.clickable:hover td{background:var(--surface-2);}
+  
+  .action-cell{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+  .pill{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-family:var(--mono);font-weight:700;}
+  .pill.profit{background:var(--profit-soft);color:var(--profit);} 
+  .pill.loss{background:var(--loss-soft);color:var(--loss);}
+  .pill.neutral{background:var(--surface-3);color:var(--text-2);}
+
+  .empty{padding:32px 10px;text-align:center;color:var(--text-3);font-size:13px;border:1px dashed var(--border-strong);border-radius:var(--radius-md);margin-top:10px;}
+
+  /* Modal Overlay System */
+  .modal-overlay{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;
+    z-index:1000;padding:20px;animation:modalFade .15s ease-out;
+  }
+  @keyframes modalFade{from{opacity:0;transform:scale(.98);}to{opacity:1;transform:scale(1);}}
+  .modal-card{
+    background:var(--surface);border:1px solid var(--border-strong);
+    border-radius:var(--radius-lg);padding:24px 26px;width:100%;max-width:520px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;
+  }
+  .modal-card h3{margin:0;font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;}
+  .modal-card p{margin:0;font-size:13.5px;color:var(--text-2);line-height:1.5;}
+  .modal-input{
+    width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);
+    padding:11px 13px;border-radius:var(--radius-sm);font-family:var(--sans);font-size:14px;
+  }
+  .modal-input:focus{outline:none;border-color:var(--accent);background:var(--surface-3);box-shadow:0 0 0 3px var(--accent-soft);}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-family:var(--mono);font-size:12.5px;}
+  @media (max-width:420px){ .detail-grid{grid-template-columns:1fr;} .modal-actions{flex-wrap:wrap;} .modal-actions .btn{flex:1;min-width:100px;} }
+  .detail-item{background:var(--surface-2);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);}
+  .detail-item span{display:block;font-size:10.5px;color:var(--text-2);font-family:var(--sans);margin-bottom:2px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="brand">
+      <div class="logo"></div>
+      <div class="name">HedgeFlow</div>
+    </div>
+    <div class="nav" id="nav">
+      <button data-view="main" class="active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Main Setup
+      </button>
+      <button data-view="calc">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V14M4 10V3M12 21V12M12 8V3M20 21V16M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+        Hedge Calculator
+      </button>
+      <button data-view="hedges">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18"/></svg>
+        Hedge Management
+      </button>
+      <button data-view="history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>
+        Trade History
+      </button>
+      <button data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"/></svg>
+        Settings
+      </button>
+    </div>
+    <div class="sidebar-foot">
+      <div class="fx-badge"><span class="fx-dot" id="fxDot"></span><span id="fxLabel">USD/JPY —</span></div>
+    </div>
+  </div>
+
+  <!-- Main View Area -->
+  <div class="main">
+
+    <!-- 1. MAIN SETUP -->
+    <div class="view active" id="view-main">
+      <div class="page-head"><h1>Main Setup</h1></div>
+
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Account Setup</h3>
+          <div class="row3">
+            <div class="field"><label>Balance ($)</label><input type="number" id="balance" placeholder="200000" value="200000"></div>
+            <div class="field"><label>Risk (%)</label><input type="number" id="riskPct" step="0.1" placeholder="1.0" value="1.0"></div>
+            <div class="field"><label>Leverage (x)</label><input type="number" id="leverage" placeholder="100" value="100"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Instrument Selection</h3>
+          <div class="row2">
+            <div class="field">
+              <label>Pair / Asset</label>
+              <select id="pair"></select>
+            </div>
+            <div class="field"><label>Point / Pip Value ($)</label><input type="number" id="pointValue" step="0.001"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3>Position Setup</h3>
+        <div class="row2">
+          <div class="field">
+            <label>Direction</label>
+            <div class="seg dir-seg" id="dirSeg">
+              <button data-val="LONG" class="active">Long</button>
+              <button data-val="SHORT">Short</button>
+            </div>
+          </div>
+          <div class="field"><label>Entry Price</label><input type="number" id="entry" step="0.00001" placeholder="15000.00"></div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Stop Loss</label>
+            <div class="seg" id="slSeg" style="margin-bottom:8px;">
+              <button data-val="dist" class="active">Distance</button>
+              <button data-val="price">Price</button>
+            </div>
+            <input type="number" id="sl" step="0.00001" placeholder="100">
+          </div>
+          <div class="field">
+            <label>Take Profit</label>
+            <div class="seg" id="tpSeg" style="margin-bottom:8px;">
+              <button data-val="dist" class="active">Distance</button>
+              <button data-val="price">Price</button>
+            </div>
+            <input type="number" id="tp" step="0.00001" placeholder="200">
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-4" style="margin-top:18px;">
+        <div class="stat"><div class="k">Risk Amount</div><div class="v neu" id="out-risk">$0.00</div></div>
+        <div class="stat"><div class="k">Calculated Main Lot</div><div class="v acc" id="out-lot">0.00</div></div>
+        <div class="stat"><div class="k">Notional Exposure</div><div class="v neu" id="out-notional">$0.00</div></div>
+        <div class="stat"><div class="k">Margin Required</div><div class="v neu" id="out-margin">$0.00</div></div>
+      </div>
+      <div class="grid cols-2" style="margin-top:18px;">
+        <div class="stat"><div class="k">Est. Loss (Remaining at SL)</div><div class="v neg" id="out-loss">$0.00</div></div>
+        <div class="stat"><div class="k">Est. Profit (With Partials at TP)</div><div class="v pos" id="out-profit">$0.00 · 0.00R</div></div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3>Partial Take Profits</h3>
+        <div class="row3 row-align-end">
+          <div class="field"><label>TP Price Target</label><input type="number" id="ptp-price" step="0.00001" placeholder="Price"></div>
+          <div class="field"><label>Close Position (%)</label><input type="number" id="ptp-pct" step="5" placeholder="50"></div>
+          <div class="field"><button class="btn ghost full" id="btnAddPartial">Add Partial TP</button></div>
+        </div>
+        <div class="table-wrap" style="margin-top:12px;"><table id="tblPartials">
+          <thead><tr><th>Target Price</th><th>Close %</th><th>Status</th><th>Realized PnL</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="empty" id="emptyPartials">No partial exits added yet.</div>
+      </div>
+    </div>
+
+    <!-- 2. HEDGE CALCULATOR -->
+    <div class="view" id="view-calc">
+      <div class="page-head"><h1>Hedge Calculator</h1></div>
+
+      <div class="card">
+        <h3>Hedge Setup</h3>
+        <div class="row2">
+          <div class="field"><label>Hedge Entry Price</label><input type="number" id="hEntry" step="0.00001" placeholder="14950.00"></div>
+          <div class="field"><label>Max Active Cap</label><input type="number" id="maxActiveCap" value="2" step="1"></div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Max Hedge Loss Cap</label>
+            <div class="seg" id="lossCapSeg" style="margin-bottom:8px;">
+              <button data-val="$" class="active">$ Amount</button>
+              <button data-val="R">R Multiplier</button>
+            </div>
+            <input type="number" id="maxLossCap" step="0.01" placeholder="e.g. 500 or 0.5">
+          </div>
+          <div class="field"><label>헷지 방어율 Hedge Defense Rate (%)</label><input type="number" id="defenseRate" step="1" value="60" placeholder="60"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>부분익절 방어율 Partial TP Defense Rate (%)</label><input type="number" id="partialDefenseRate" step="1" placeholder="예: 20"></div>
+          <div class="field"><label>목표 총 방어율 (참고)</label><input type="text" id="out-totalDefense" disabled value="–" style="opacity:.65;"></div>
+        </div>
+      </div>
+
+      <div class="grid cols-2" style="margin-top:18px;">
+        <div class="stat"><div class="k">Calculated Hedge Lot</div><div class="v acc" id="out-hedgeLot">0.00</div></div>
+        <div class="stat"><div class="k">Net Exposure After Hedge</div><div class="v neu" id="out-netExposure">–</div></div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3>부분익절 방어율 → 필요 청산 물량 (현재 헷지 진입가 기준)</h3>
+        <div class="grid cols-3">
+          <div class="stat"><div class="k">필요 청산 비율 (전체 대비)</div><div class="v acc" id="out-partialPct">–</div></div>
+          <div class="stat"><div class="k">필요 청산 물량 (Lot)</div><div class="v neu" id="out-partialLot">–</div></div>
+          <div class="stat"><div class="k">예상 회수 금액</div><div class="v pos" id="out-partialAmount">–</div></div>
+        </div>
+        <p id="partialDefenseNote" style="margin:12px 0 0;font-size:12px;color:var(--text-2);"></p>
+        <button class="btn ghost full" id="btnApplyPartialFromDefense" style="margin-top:14px;">이 비율로 현재 헷지가에서 부분익절 추가</button>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <button class="btn full" id="btnAddHedge">Active Hedge</button>
+      </div>
+    </div>
+
+    <!-- 3. HEDGE MANAGEMENT -->
+    <div class="view" id="view-hedges">
+      <div class="page-head"><h1>Hedge Management</h1></div>
+
+      <div class="card">
+        <h3>Active Hedges <span class="pill neutral" id="activeCount">0</span></h3>
+        <div class="table-wrap"><table id="tblActive">
+          <thead><tr><th># ID</th><th>Entry</th><th>TP (= Main SL)</th><th>Lot Size</th><th>Note</th><th>Quick Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="empty" id="emptyActive">No active hedges currently open.</div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3>Completed Hedges in Current Trade</h3>
+        <div class="table-wrap"><table id="tblClosed">
+          <thead><tr><th># ID</th><th>Result Type</th><th>Lot Size</th><th>Realized PnL</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="empty" id="emptyClosed">No completed hedges in this session.</div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3>Finish Current Trade Workspace</h3>
+        <div class="row3 row-align-end">
+          <div class="field">
+            <label>Main Position Exit Type</label>
+            <select id="exitType">
+              <option value="tp">Take Profit (Full/Remaining Target)</option>
+              <option value="sl">Stop Loss (Full/Remaining SL)</option>
+              <option value="manual">Manual Exit</option>
+            </select>
+          </div>
+          <div class="field"><label>Manual PnL ($) (If Manual selected)</label><input type="number" id="manualPnl" step="1" placeholder="0"></div>
+          <div class="field"><button class="btn full success" id="btnFinishTrade">Finish & Archive Trade</button></div>
+        </div>
+        <div class="field" style="margin-top:14px;">
+          <label>Trading Note / Rationale (진입 근거 및 메모)</label>
+          <textarea id="tradeNote" placeholder="예: 15분봉 ChoCh 형성 후 오더블록 리테스트 진입. 1차 Target 도달 시 부분익절 예정."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. TRADE HISTORY -->
+    <div class="view" id="view-history">
+      <div class="page-head">
+        <h1>Trade History & Analytics</h1>
+        <button class="btn ghost small" id="btnResetAll">Reset All Application Data</button>
+      </div>
+      <div class="grid cols-4">
+        <div class="stat"><div class="k">Win Rate</div><div class="v acc" id="hs-winrate">–</div></div>
+        <div class="stat"><div class="k">Net Cumulative PnL</div><div class="v neu" id="hs-netpnl">$0.00</div></div>
+        <div class="stat"><div class="k">Total Trades</div><div class="v neu" id="hs-total">0</div></div>
+        <div class="stat"><div class="k">Hedge Defense Success</div><div class="v acc" id="hs-defense">0</div></div>
+      </div>
+      <div class="card" style="margin-top:18px;">
+        <div class="table-wrap"><table id="tblHistory">
+          <thead><tr><th>Date</th><th>Pair</th><th>Position</th><th>Main PnL</th><th>Hedge PnL</th><th>Net PnL</th><th>Exit Type</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <div class="empty" id="emptyHistory">No trades archived in history yet.</div>
+      </div>
+    </div>
+
+    <div class="view" id="view-settings">
+      <div class="page-head">
+        <h1>Settings</h1>
+      </div>
+      <div class="card" style="max-width:560px;">
+        <h3>Notion Integration</h3>
+        <p style="font-size:13px;color:var(--text-2);margin:0 0 16px;line-height:1.5;">
+          Finish & Archive Trade 실행 시, 로컬 저장과 동시에 아래 노션 데이터베이스에 트레이드가 자동으로 기록됩니다.
+        </p>
+        <div class="field">
+          <label>Notion Integration Token</label>
+          <input type="password" id="notionToken" placeholder="secret_... 또는 ntn_...">
+        </div>
+        <div class="field">
+          <label>Notion Database ID</label>
+          <input type="text" id="notionDbId" placeholder="예: b608e590a03f437093bfd760fea41a59">
+        </div>
+        <div class="row2" style="margin-top:4px;">
+          <button class="btn small" id="btnSaveNotionConfig">저장</button>
+          <button class="btn ghost small" id="btnTestNotionConfig">연결 테스트</button>
+        </div>
+        <div id="notionConfigStatus" style="margin-top:10px;font-size:12.5px;"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Custom Modal Overlay System -->
+<div id="customModalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <h3 id="customModalTitle">알림</h3>
+    <p id="customModalMessage">메시지 내용</p>
+    <div id="customModalBody"></div>
+    <div class="modal-actions">
+      <button id="customModalCancelBtn" class="btn ghost small">취소</button>
+      <button id="customModalConfirmBtn" class="btn small">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= Custom Modal System ================= */
+function showModal({ title, message, bodyHTML = '', type = 'info', confirmText = '확인', cancelText = '취소' }){
+  return new Promise((resolve) => {
+    const overlay = $('customModalOverlay');
+    const titleEl = $('customModalTitle');
+    const msgEl = $('customModalMessage');
+    const bodyEl = $('customModalBody');
+    const confirmBtn = $('customModalConfirmBtn');
+    const cancelBtn = $('customModalCancelBtn');
+
+    titleEl.textContent = title || '알림';
+    msgEl.textContent = message || '';
+    bodyEl.innerHTML = bodyHTML;
+
+    if (cancelText) {
+      cancelBtn.style.display = 'inline-flex';
+      cancelBtn.textContent = cancelText;
+    } else {
+      cancelBtn.style.display = 'none';
+    }
+
+    confirmBtn.textContent = confirmText;
+    confirmBtn.className = 'btn small ' + (type === 'danger' ? 'danger' : type === 'success' ? 'success' : '');
+
+    overlay.style.display = 'flex';
+
+    const cleanup = () => {
+      overlay.style.display = 'none';
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onOverlayClick);
+    };
+
+    const onConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const onCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const onOverlayClick = (e) => {
+      if (e.target === overlay) {
+        onCancel();
+      }
+    };
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onOverlayClick);
+  });
+}
+
+/* ================= Comprehensive Instrument Metadata ================= */
+const PAIR_META = {
+  // Indices
+  NQ:     { label:'Nasdaq 100 (NQ)',     pipSize:1.0,    decimals:2, fixedPV:20,   type:'index' },
+  ES:     { label:'S&P 500 (ES)',        pipSize:0.25,   decimals:2, fixedPV:12.5, type:'index' },
+  YM:     { label:'Dow Jones (YM)',      pipSize:1.0,    decimals:0, fixedPV:5,    type:'index' },
+  RTY:    { label:'Russell 2000 (RTY)',  pipSize:0.1,    decimals:2, fixedPV:5,    type:'index' },
+  DAX:    { label:'DAX 40 (FDAX)',       pipSize:1.0,    decimals:1, fixedPV:25,   type:'index' },
+  NIKKEI: { label:'Nikkei 225 (NKD)',    pipSize:5.0,    decimals:0, fixedPV:25,   type:'index' },
+  
+  // Commodities
+  XAU:    { label:'Gold (XAU/USD)',      pipSize:0.1,    decimals:2, fixedPV:10,   type:'commodity' },
+  XAG:    { label:'Silver (XAG/USD)',    pipSize:0.01,   decimals:3, fixedPV:50,   type:'commodity' },
+  WTI:    { label:'Crude Oil (WTI)',     pipSize:0.01,   decimals:2, fixedPV:10,   type:'commodity' },
+
+  // Major Forex
+  EURUSD: { label:'EUR/USD',             pipSize:0.0001, decimals:5, fixedPV:10,   type:'forex' },
+  GBPUSD: { label:'GBP/USD',             pipSize:0.0001, decimals:5, fixedPV:10,   type:'forex' },
+  AUDUSD: { label:'AUD/USD',             pipSize:0.0001, decimals:5, fixedPV:10,   type:'forex' },
+  NZDUSD: { label:'NZD/USD',             pipSize:0.0001, decimals:5, fixedPV:10,   type:'forex' },
+  USDCAD: { label:'USD/CAD',             pipSize:0.0001, decimals:5, liveQuote:'CAD', type:'forex' },
+  USDCHF: { label:'USD/CHF',             pipSize:0.0001, decimals:5, liveQuote:'CHF', type:'forex' },
+  
+  // JPY Pairs
+  USDJPY: { label:'USD/JPY',             pipSize:0.01,   decimals:3, liveQuote:'JPY', type:'forex' },
+  EURJPY: { label:'EUR/JPY',             pipSize:0.01,   decimals:3, liveQuote:'JPY', type:'forex' },
+  GBPJPY: { label:'GBP/JPY',             pipSize:0.01,   decimals:3, liveQuote:'JPY', type:'forex' },
+  AUDJPY: { label:'AUD/JPY',             pipSize:0.01,   decimals:3, liveQuote:'JPY', type:'forex' },
+  CADJPY: { label:'CAD/JPY',             pipSize:0.01,   decimals:3, liveQuote:'JPY', type:'forex' },
+
+  // Crypto
+  BTCUSD: { label:'Bitcoin (BTC/USD)',   pipSize:1.0,    decimals:2, fixedPV:1,    type:'crypto' },
+  ETHUSD: { label:'Ethereum (ETH/USD)',  pipSize:0.1,    decimals:2, fixedPV:0.1,  type:'crypto' }
+};
+
+/* ================= Application State ================= */
+let partials = [];
+let hedges = [];
+let history = [];
+let nextId = { partial:1, hedge:1, trade:1 };
+let fx = { rates:{ JPY:155.0, CAD:1.38, CHF:0.89 }, ts:null };
+
+function $(id){ return document.getElementById(id); }
+function fmt$(n){ const v=n||0; return (v<0?'-$':'$')+Math.abs(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtN(n,d=2){ return Number(n||0).toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function meta(){ return PAIR_META[$('pair').value] || PAIR_META.NQ; }
+function fmtPrice(v){ return v==null || isNaN(v) ? '–' : Number(v).toFixed(meta().decimals); }
+
+/* ================= localStorage Persistence ================= */
+function saveState(){
+  const data = {
+    inputs: {
+      balance: $('balance').value, riskPct: $('riskPct').value, leverage: $('leverage').value,
+      pair: $('pair').value, pointValue: $('pointValue').value,
+      direction, slMode, tpMode, lossCapMode,
+      entry: $('entry').value, sl: $('sl').value, tp: $('tp').value,
+      hEntry: $('hEntry').value, maxActiveCap: $('maxActiveCap').value,
+      maxLossCap: $('maxLossCap').value, defenseRate: $('defenseRate').value,
+      partialDefenseRate: $('partialDefenseRate').value,
+      tradeNote: $('tradeNote').value
+    },
+    partials, hedges, history, nextId
+  };
+  try{
+    localStorage.setItem('hedgeflow_state', JSON.stringify(data));
+  }catch(e){
+    console.warn('localStorage save failed:', e);
+  }
+}
+
+function loadState(){
+  try{
+    const stored = localStorage.getItem('hedgeflow_state');
+    if(!stored) return;
+    const data = JSON.parse(stored);
+    if(data.partials) partials = data.partials;
+    if(data.hedges) hedges = data.hedges;
+    if(data.history) history = data.history;
+    if(data.nextId) nextId = data.nextId;
+    
+    if(data.inputs){
+      const inp = data.inputs;
+      if(inp.balance) $('balance').value = inp.balance;
+      if(inp.riskPct) $('riskPct').value = inp.riskPct;
+      if(inp.leverage) $('leverage').value = inp.leverage;
+      if(inp.pair && PAIR_META[inp.pair]) $('pair').value = inp.pair;
+      if(inp.pointValue) $('pointValue').value = inp.pointValue;
+      
+      if(inp.direction) setSegVal('dirSeg', inp.direction, v=>direction=v);
+      if(inp.slMode) setSegVal('slSeg', inp.slMode, v=>slMode=v);
+      if(inp.tpMode) setSegVal('tpSeg', inp.tpMode, v=>tpMode=v);
+      if(inp.lossCapMode) setSegVal('lossCapSeg', inp.lossCapMode, v=>lossCapMode=v);
+
+      if(inp.entry) $('entry').value = inp.entry;
+      if(inp.sl) $('sl').value = inp.sl;
+      if(inp.tp) $('tp').value = inp.tp;
+      if(inp.hEntry) $('hEntry').value = inp.hEntry;
+      if(inp.maxActiveCap) $('maxActiveCap').value = inp.maxActiveCap;
+      if(inp.maxLossCap) $('maxLossCap').value = inp.maxLossCap;
+      if(inp.defenseRate) $('defenseRate').value = inp.defenseRate;
+      if(inp.partialDefenseRate) $('partialDefenseRate').value = inp.partialDefenseRate;
+      if(inp.tradeNote) $('tradeNote').value = inp.tradeNote;
+    }
+  }catch(e){
+    console.warn('localStorage load failed:', e);
+  }
+}
+
+/* ================= Notion Integration ================= */
+function getNotionConfig(){
+  try{
+    const cfg = localStorage.getItem('notion_config');
+    return cfg ? JSON.parse(cfg) : { token: '', dbId: '' };
+  }catch(e){ return { token: '', dbId: '' }; }
+}
+
+function saveNotionConfig(token, dbId){
+  try{
+    localStorage.setItem('notion_config', JSON.stringify({ token, dbId }));
+  }catch(e){}
+}
+
+async function saveTradeToNotion(tradeData){
+  const cfg = getNotionConfig();
+  if(!cfg.token || !cfg.dbId) return false;
+
+  try{
+    const pairLabel = PAIR_META[tradeData.pair]?.label || tradeData.pair;
+    const status = tradeData.netPnl > 0 ? 'Win' : (tradeData.netPnl < 0 ? 'Loss' : 'Breakeven');
+
+    const response = await fetch('/api/notion-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: cfg.token,
+        dbId: cfg.dbId,
+        properties: {
+          'Name': { title: [{ text: { content: `${pairLabel} ${tradeData.direction}` } }] },
+          'Date': { date: { start: new Date(tradeData.ts).toISOString().split('T')[0] } },
+          'Pair': { select: { name: pairLabel } },
+          'Direction': { select: { name: tradeData.direction } },
+          'Entry Price': { number: parseFloat(tradeData.entryPrice) || null },
+          'SL Price': { number: parseFloat(tradeData.slPrice) || null },
+          'TP Price': { number: parseFloat(tradeData.tpPrice) || null },
+          'Main PnL ($)': { number: tradeData.mainPnl },
+          'Hedge PnL ($)': { number: tradeData.hedgeNet },
+          'Net PnL ($)': { number: tradeData.netPnl },
+          'Defense Rate (%)': { number: null },
+          'Exit Type': { select: { name: tradeData.exitType === 'tp' ? 'Take Profit' : (tradeData.exitType === 'sl' ? 'Stop Loss' : 'Manual') } },
+          'Trading Note': { rich_text: [{ text: { content: tradeData.note || '' } }] },
+          'Status': { select: { name: status } }
+        }
+      })
+    });
+
+    if(!response.ok){
+      const error = await response.json();
+      console.error('Notion API error:', error);
+      return false;
+    }
+    return true;
+  }catch(e){
+    console.error('Notion save error:', e);
+    return false;
+  }
+}
+
+/* ================= Live FX Rates & Pip Value Calculator ================= */
+function pointValueFor(pairKey){
+  const m = PAIR_META[pairKey];
+  if(!m) return 1;
+  if(m.liveQuote){
+    const rate = fx.rates[m.liveQuote];
+    if(rate){
+      if(m.liveQuote === 'JPY') return (m.pipSize * 100000) / rate;
+      if(m.liveQuote === 'CAD') return (m.pipSize * 100000) / rate;
+      if(m.liveQuote === 'CHF') return (m.pipSize * 100000) / rate;
+    }
+  }
+  return m.fixedPV || 1;
+}
+
+function updateFxBadge(){
+  const dot=$('fxDot'), label=$('fxLabel');
+  const jpy = fx.rates.JPY;
+  if(jpy && fx.ts && (Date.now()-fx.ts < 60*60*1000)){ 
+    dot.className='fx-dot live'; label.textContent='USD/JPY '+fmtN(jpy,2)+' · Live'; 
+  } else if(jpy){ 
+    dot.className='fx-dot cached'; label.textContent='USD/JPY '+fmtN(jpy,2)+' · Cached'; 
+  } else { 
+    dot.className='fx-dot offline'; label.textContent='FX Rates Offline'; 
+  }
+}
+
+async function refreshFX(){
+  const endpoints = [
+    'https://open.er-api.com/v6/latest/USD',
+    'https://api.exchangerate-api.com/v4/latest/USD',
+    'https://api.frankfurter.dev/v1/latest?base=USD'
+  ];
+
+  for(let ep of endpoints){
+    try{
+      const res = await fetch(ep);
+      if(!res.ok) continue;
+      const data = await res.json();
+      const rates = data.rates || data.rates;
+      if(rates && rates.JPY){
+        fx.rates = { JPY: rates.JPY, CAD: rates.CAD || 1.38, CHF: rates.CHF || 0.89 };
+        fx.ts = Date.now();
+        break;
+      }
+    }catch(e){}
+  }
+  updateFxBadge();
+  const m = meta();
+  if(m.liveQuote){
+    $('pointValue').value = pointValueFor($('pair').value).toFixed(3);
+    renderMainOut();
+  }
+}
+
+/* ================= View Navigation ================= */
+$('nav').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-view]'); if(!btn) return;
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  $('view-'+btn.dataset.view).classList.add('active');
+  
+  if(btn.dataset.view==='calc') renderCalcOut();
+  if(btn.dataset.view==='hedges') renderHedgeTables();
+  if(btn.dataset.view==='history') renderHistory();
+});
+
+/* ================= Instrument Selector ================= */
+(function initPairSelect(){
+  const sel = $('pair');
+  sel.innerHTML = Object.keys(PAIR_META).map(k=>`<option value="${k}">${PAIR_META[k].label}</option>`).join('');
+  sel.addEventListener('change', handlePairChange);
+})();
+
+function handlePairChange(){
+  const pair = $('pair').value;
+  const m = PAIR_META[pair];
+  $('pointValue').value = pointValueFor(pair).toFixed(m.decimals > 2 ? 3 : 2);
+  renderMainOut();
+  saveState();
+}
+
+/* ================= Segmented Switches ================= */
+function wireSeg(id, onChange){
+  const wrap = $(id);
+  wrap.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      wrap.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      onChange(b.dataset.val);
+      saveState();
+    });
+  });
+}
+
+function setSegVal(id, val, onChange){
+  const wrap = $(id);
+  wrap.querySelectorAll('button').forEach(b=>{
+    if(b.dataset.val === val){
+      wrap.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      onChange(val);
+    }
+  });
+}
+
+let direction='LONG', slMode='dist', tpMode='dist', lossCapMode='$';
+
+wireSeg('dirSeg', v => { direction=v; renderMainOut(); });
+wireSeg('slSeg', v => { slMode=v; renderMainOut(); });
+wireSeg('tpSeg', v => { tpMode=v; renderMainOut(); });
+wireSeg('lossCapSeg', v => { lossCapMode=v; renderCalcOut(); });
+
+/* ================= Main Position Calculations ================= */
+function entryPrice(){ return parseFloat($('entry').value); }
+
+function slDistPoints(){
+  const e = entryPrice();
+  const val = parseFloat($('sl').value);
+  if(isNaN(val)) return 0;
+  if(slMode==='dist') return val;
+  return isNaN(e) ? 0 : Math.abs(e - val) / meta().pipSize;
+}
+
+function tpDistPoints(){
+  const e = entryPrice();
+  const val = parseFloat($('tp').value);
+  if(isNaN(val)) return 0;
+  if(tpMode==='dist') return val;
+  return isNaN(e) ? 0 : Math.abs(e - val) / meta().pipSize;
+}
+
+function slPrice(){
+  const e = entryPrice(); if(isNaN(e)) return null;
+  const val = parseFloat($('sl').value); if(isNaN(val)) return null;
+  if(slMode==='price') return val;
+  return direction==='LONG' ? e - val * meta().pipSize : e + val * meta().pipSize;
+}
+
+function tpPrice(){
+  const e = entryPrice(); if(isNaN(e)) return null;
+  const val = parseFloat($('tp').value); if(isNaN(val)) return null;
+  if(tpMode==='price') return val;
+  return direction==='LONG' ? e + val * meta().pipSize : e - val * meta().pipSize;
+}
+
+function pointValue(){ return parseFloat($('pointValue').value) || 0; }
+function riskAmount(){ return (parseFloat($('balance').value)||0) * (parseFloat($('riskPct').value)||0) / 100; }
+
+function mainLot(){
+  const d = slDistPoints(), pv = pointValue();
+  if(!(d > 0) || !(pv > 0)) return 0;
+  return riskAmount() / (d * pv);
+}
+
+function remainingPct(){ 
+  const closed = partials.filter(p=>p.filled).reduce((a,p)=>a+p.pct, 0);
+  return Math.max(0, 100 - closed); 
+}
+
+function partialProfit(p){
+  const e = entryPrice(); if(isNaN(e)) return 0;
+  const dist = Math.abs(e - p.price) / meta().pipSize;
+  const sign = direction==='LONG' ? (p.price > e ? 1 : -1) : (p.price < e ? 1 : -1);
+  const lotPortion = mainLot() * (p.pct / 100);
+  return sign * dist * lotPortion * pointValue();
+}
+
+function partialsRealized(){ 
+  return partials.filter(p=>p.filled).reduce((a,p)=>a+partialProfit(p), 0); 
+}
+
+function notionalValue(){
+  const lot = mainLot(), price = entryPrice();
+  if(isNaN(price) || !(lot > 0)) return 0;
+  return lot * price * pointValue();
+}
+
+function activeHedgeLotSum(){
+  return hedges.filter(h=>h.status==='open').reduce((a,h)=>a+h.lot, 0);
+}
+
+function renderMainOut(){
+  const rPct = remainingPct() / 100;
+  const risk = riskAmount();
+  const lot = mainLot();
+  const notional = notionalValue();
+  const lev = parseFloat($('leverage').value) || 1;
+
+  $('out-risk').textContent = fmt$(risk);
+  $('out-lot').textContent = fmtN(lot, 2);
+  $('out-notional').textContent = fmt$(notional);
+  $('out-margin').textContent = fmt$(notional / lev);
+
+  const lossRemain = slDistPoints() * lot * rPct * pointValue();
+  const profitRemain = tpDistPoints() * lot * rPct * pointValue() + partialsRealized();
+
+  $('out-loss').textContent = fmt$(-lossRemain);
+  $('out-profit').textContent = fmt$(profitRemain) + ' · ' + fmtN(risk > 0 ? profitRemain / risk : 0, 2) + 'R';
+
+  renderPartials();
+  renderCalcOut();
+  saveState();
+}
+
+['balance','riskPct','leverage','entry','sl','tp','pointValue','tradeNote'].forEach(id=>{
+  $(id).addEventListener('input', renderMainOut);
+  $(id).addEventListener('change', renderMainOut);
+});
+
+/* ================= Partial Take Profits ================= */
+$('btnAddPartial').addEventListener('click', ()=>{
+  const price = parseFloat($('ptp-price').value), pct = parseFloat($('ptp-pct').value);
+  if(!(price > 0) || !(pct > 0)) return;
+  partials.push({ id:nextId.partial++, price, pct, filled:false });
+  $('ptp-price').value=''; $('ptp-pct').value='';
+  renderMainOut();
+});
+
+function renderPartials(){
+  const tb = document.querySelector('#tblPartials tbody');
+  tb.innerHTML = partials.map(p=>`
+    <tr>
+      <td>${fmtPrice(p.price)}</td>
+      <td>${p.pct}%</td>
+      <td><span class="pill ${p.filled?'profit':'neutral'}">${p.filled?'Filled':'Pending'}</span></td>
+      <td style="color:${partialProfit(p)>=0?'var(--profit)':'var(--loss)'}">${p.filled ? fmt$(partialProfit(p)) : '–'}</td>
+      <td class="action-cell">
+        <button class="btn small ghost" data-togglefill="${p.id}">${p.filled?'Unmark':'Mark Filled'}</button>
+        <button class="btn small danger" data-delpartial="${p.id}">Delete</button>
+      </td>
+    </tr>`).join('');
+  $('emptyPartials').style.display = partials.length ? 'none' : 'block';
+
+  tb.querySelectorAll('[data-togglefill]').forEach(b=>b.addEventListener('click', ()=>{
+    const p = partials.find(x=>x.id===parseInt(b.dataset.togglefill)); 
+    if(p){ p.filled = !p.filled; renderMainOut(); }
+  }));
+
+  tb.querySelectorAll('[data-delpartial]').forEach(b=>b.addEventListener('click', ()=>{
+    partials = partials.filter(x=>x.id!==parseInt(b.dataset.delpartial)); 
+    renderMainOut();
+  }));
+}
+
+/* ================= Partial-TP Defense Rate Calculator ================= */
+function computePartialRequirement(){
+  const noteEl = $('partialDefenseNote');
+  const pctOut = $('out-partialPct'), lotOut = $('out-partialLot'), amtOut = $('out-partialAmount');
+
+  const rP = (parseFloat($('partialDefenseRate').value) || 0) / 100;
+  const mEntry = entryPrice();
+  const hEntry = parseFloat($('hEntry').value);
+  const lot = mainLot();
+  const ps = meta().pipSize;
+
+  if(rP <= 0 || isNaN(mEntry) || isNaN(hEntry) || !(lot > 0)){
+    pctOut.textContent = '–'; lotOut.textContent = '–'; amtOut.textContent = '–';
+    noteEl.textContent = '';
+    return;
+  }
+
+  const dist = Math.abs(mEntry - hEntry) / ps;
+  const sign = direction==='LONG' ? (hEntry > mEntry ? 1 : -1) : (hEntry < mEntry ? 1 : -1);
+
+  if(dist <= 0 || sign <= 0){
+    pctOut.textContent = '해당 없음'; lotOut.textContent = '–'; amtOut.textContent = '–';
+    noteEl.textContent = '현재 헷지 진입가가 메인 진입가 기준 손실 구간에 있어 부분익절로 방어율을 만들 수 없습니다.';
+    return;
+  }
+
+  const targetRecoveryP = rP * riskAmount();
+  const fullLotProfitAtHedgePrice = dist * lot * pointValue();
+  const requiredPctOfFull = fullLotProfitAtHedgePrice > 0 ? (targetRecoveryP / fullLotProfitAtHedgePrice) * 100 : 0;
+  const available = remainingPct();
+  const cappedPct = Math.min(requiredPctOfFull, available);
+  const requiredLot = lot * (cappedPct / 100);
+  const achievedAmount = dist * requiredLot * pointValue();
+
+  pctOut.textContent = fmtN(cappedPct, 1) + '%';
+  lotOut.textContent = fmtN(requiredLot, 2);
+  amtOut.textContent = fmt$(achievedAmount);
+
+  if(requiredPctOfFull > available + 0.01){
+    noteEl.textContent = `목표 방어율을 채우려면 ${fmtN(requiredPctOfFull,1)}%가 필요하지만, 잔여 물량이 ${fmtN(available,1)}%뿐이라 전량 기준으로 제한했습니다.`;
+  } else {
+    noteEl.textContent = '';
+  }
+}
+
+function updateTotalDefenseDisplay(){
+  const rH = parseFloat($('defenseRate').value) || 0;
+  const rP = parseFloat($('partialDefenseRate').value) || 0;
+  const el = $('out-totalDefense');
+  if(el) el.value = (rH + rP) + '% (헷지 ' + rH + '% + 부분익절 ' + rP + '%)';
+}
+
+/* ================= Hedge Calculator ================= */
+function renderCalcOut(){
+  const mainSL = slPrice(), mEntry = entryPrice();
+  const m = meta();
+
+  const hEntry = parseFloat($('hEntry').value);
+  if(isNaN(hEntry) || mainSL == null || isNaN(mEntry)){
+    $('out-hedgeLot').textContent = '0.00'; 
+    $('out-netExposure').textContent = '–';
+    computePartialRequirement();
+    updateTotalDefenseDisplay();
+    return;
+  }
+
+  const pv = pointValue();
+  const distToHedgeTP = Math.abs(hEntry - mainSL) / m.pipSize;
+  const distToMainEntry = Math.abs(hEntry - mEntry) / m.pipSize;
+
+  const defenseRate = (parseFloat($('defenseRate').value)||0) / 100;
+  const targetRecovery = defenseRate * riskAmount();
+  const rawLot = distToHedgeTP > 0 ? targetRecovery / (distToHedgeTP * pv) : 0;
+
+  const capVal = parseFloat($('maxLossCap').value);
+  let lotCapByLoss = Infinity;
+
+  if(!isNaN(capVal) && capVal > 0 && distToMainEntry > 0){
+    const capDollars = lossCapMode==='R' ? capVal * riskAmount() : capVal;
+    lotCapByLoss = capDollars / (distToMainEntry * pv);
+  }
+
+  const hedgeLot = Math.max(0, Math.min(rawLot, lotCapByLoss));
+  $('out-hedgeLot').textContent = fmtN(hedgeLot, 2);
+
+  const mainRemainingLot = mainLot() * (remainingPct() / 100);
+  const totalActiveHedgeLots = activeHedgeLotSum();
+  
+  // Accumulated net exposure including existing active hedges
+  const netLots = direction === 'LONG' ? mainRemainingLot - totalActiveHedgeLots - hedgeLot : totalActiveHedgeLots + hedgeLot - mainRemainingLot;
+  const netLabel = netLots >= 0 ? 'Net LONG' : 'Net SHORT';
+
+  $('out-netExposure').textContent = fmtN(Math.abs(netLots), 2) + ' Lot (' + netLabel + ')';
+
+  computePartialRequirement();
+  updateTotalDefenseDisplay();
+  saveState();
+}
+
+['hEntry','maxActiveCap','maxLossCap','defenseRate','partialDefenseRate'].forEach(id=>{
+  $(id).addEventListener('input', renderCalcOut);
+  $(id).addEventListener('change', renderCalcOut);
+});
+
+$('btnAddHedge').addEventListener('click', ()=>{
+  const activeCount = hedges.filter(h=>h.status==='open').length;
+  const cap = parseInt($('maxActiveCap').value) || 2;
+  
+  if(activeCount >= cap) return;
+
+  const hEntry = parseFloat($('hEntry').value), mainSL = slPrice(), mEntry = entryPrice();
+  const lot = parseFloat($('out-hedgeLot').textContent);
+
+  if(isNaN(hEntry) || mainSL == null || isNaN(mEntry) || !(lot > 0)) return;
+
+  hedges.push({ 
+    id: nextId.hedge++, entry: hEntry, sl: null, tp: mainSL, lot, status: 'open', result: null, pnl: 0,
+    note: `Defense ${$('defenseRate').value || 0}%` 
+  });
+
+  saveState();
+  renderMainOut();
+  renderHedgeTables();
+  document.querySelector('.nav button[data-view="hedges"]').click();
+});
+
+$('btnApplyPartialFromDefense').addEventListener('click', ()=>{
+  const hEntry = parseFloat($('hEntry').value);
+  const pctText = $('out-partialPct').textContent;
+  const pct = parseFloat(pctText);
+
+  if(isNaN(hEntry) || isNaN(pct) || !(pct > 0)) return;
+
+  partials.push({ id:nextId.partial++, price:hEntry, pct, filled:false });
+  renderMainOut();
+  document.querySelector('.nav button[data-view="main"]').click();
+});
+
+/* ================= Hedge Management ================= */
+function hedgePips(h){ 
+  const ps = meta().pipSize || 1;
+  return (h.tp != null && !isNaN(h.tp) && !isNaN(h.entry)) ? Math.abs(h.entry - h.tp) / ps : 0; 
+}
+
+function closeHedge(id, result, manualPnl){
+  const h = hedges.find(x=>x.id===id); if(!h) return;
+  const pv = pointValue();
+  h.status = 'closed'; 
+  h.result = result;
+
+  if(result==='tp') h.pnl = hedgePips(h) * h.lot * pv;
+  else h.pnl = manualPnl || 0;
+
+  renderHedgeTables();
+  renderMainOut();
+  saveState();
+}
+
+function deleteHedge(id){ 
+  hedges = hedges.filter(h=>h.id!==id); 
+  renderHedgeTables();
+  renderMainOut();
+  saveState();
+}
+
+function renderHedgeTables(){
+  const active = hedges.filter(h=>h.status==='open');
+  const closed = hedges.filter(h=>h.status==='closed');
+  $('activeCount').textContent = active.length;
+
+  const tbA = document.querySelector('#tblActive tbody');
+  tbA.innerHTML = active.map(h=>`
+    <tr>
+      <td>#${h.id}</td>
+      <td>${fmtPrice(h.entry)}</td>
+      <td>${fmtPrice(h.tp)}</td>
+      <td>${fmtN(h.lot,2)}</td>
+      <td style="font-family:var(--sans);font-size:12px;color:var(--text-2);">${h.note||''}</td>
+      <td class="action-cell">
+        <button class="btn small success" data-close="${h.id}">Close</button>
+        <button class="btn small danger" data-del="${h.id}">Delete</button>
+      </td>
+    </tr>`).join('');
+  $('emptyActive').style.display = active.length ? 'none' : 'block';
+
+  tbA.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', async ()=>{
+    const id = parseInt(b.dataset.close);
+    const h = hedges.find(x=>x.id===id);
+    if(!h) return;
+
+    const ps = meta().pipSize || 1;
+    const pv = pointValue();
+
+    const bodyHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <p style="font-size:12.5px;color:var(--text-2);">청산 가격(Exit Price)을 입력하면 손익이 자동 계산됩니다. 비워두면 Hedge TP(${fmtPrice(h.tp)})로 자동 청산됩니다.</p>
+        <input type="number" id="closeExitPrice" class="modal-input" step="0.00001" placeholder="Exit Price (기본값: ${fmtPrice(h.tp)})">
+      </div>
+    `;
+
+    const ok = await showModal({
+      title: '헷지 포지션 청산',
+      message: `#${h.id} 헷지 포지션을 청산합니다.`,
+      bodyHTML,
+      type: 'success',
+      confirmText: '청산 실행',
+      cancelText: '취소'
+    });
+
+    if(ok){
+      const inputPriceEl = $('closeExitPrice');
+      const customPrice = parseFloat(inputPriceEl ? inputPriceEl.value : '');
+      
+      if(!isNaN(customPrice) && customPrice > 0){
+        // Calculate PnL based on custom exit price
+        // Hedge is Short direction against main Long
+        const hedgeDir = direction === 'LONG' ? 'SHORT' : 'LONG';
+        const dist = Math.abs(h.entry - customPrice) / ps;
+        const sign = hedgeDir === 'SHORT' ? (customPrice < h.entry ? 1 : -1) : (customPrice > h.entry ? 1 : -1);
+        const pnl = sign * dist * h.lot * pv;
+        closeHedge(id, 'manual', pnl);
+      } else {
+        // Full TP exit
+        closeHedge(id, 'tp');
+      }
+    }
+  }));
+
+  tbA.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>{ 
+    deleteHedge(parseInt(b.dataset.del)); 
+  }));
+
+  const tbC = document.querySelector('#tblClosed tbody');
+  tbC.innerHTML = closed.map(h=>{
+    const label = h.result==='tp' ? 'TP Success' : 'Manual';
+    return `<tr>
+      <td>#${h.id}</td>
+      <td><span class="pill ${h.pnl>=0?'profit':'loss'}">${label}</span></td>
+      <td>${fmtN(h.lot,2)}</td>
+      <td style="color:${h.pnl>=0?'var(--profit)':'var(--loss)'}">${fmt$(h.pnl)}</td>
+      <td class="action-cell"><button class="btn small danger" data-del="${h.id}">Delete</button></td>
+    </tr>`;
+  }).join('');
+  $('emptyClosed').style.display = closed.length ? 'none' : 'block';
+
+  tbC.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click', ()=>{ 
+    deleteHedge(parseInt(b.dataset.del)); 
+  }));
+}
+
+/* ================= Finish Trade / Archive ================= */
+$('btnFinishTrade').addEventListener('click', ()=>{
+  const exitType = $('exitType').value;
+  const note = $('tradeNote').value || '';
+
+  const rPct = remainingPct() / 100;
+  const pv = pointValue();
+  let mainPnl = partialsRealized();
+
+  if(exitType==='tp') mainPnl += tpDistPoints() * mainLot() * rPct * pv;
+  else if(exitType==='sl') mainPnl += -slDistPoints() * mainLot() * rPct * pv;
+  else mainPnl += parseFloat($('manualPnl').value) || 0;
+
+  const closedHedges = hedges.filter(h=>h.status==='closed');
+  const hedgeNet = closedHedges.reduce((a,h)=>a+h.pnl, 0);
+  const netPnl = mainPnl + hedgeNet;
+
+  history.unshift({
+    id: nextId.trade++, ts: new Date().toISOString(), pair: $('pair').value, direction,
+    entryPrice: entryPrice(), slPrice: slPrice(), tpPrice: tpPrice(), mainLot: mainLot(),
+    mainPnl, hedgeNet, netPnl, exitType, hedgeCount: closedHedges.length,
+    note: note,
+    partialsLog: [...partials],
+    hedgesLog: [...closedHedges]
+  });
+
+  // Notion 자동 저장 (설정되어 있는 경우)
+  saveTradeToNotion(history[0]).then(ok=>{
+    if(ok) console.log('Notion에 트레이드 저장 완료');
+  });
+
+  // Clear current active workspace
+  hedges = []; partials = [];
+  $('entry').value=''; $('sl').value=''; $('tp').value=''; $('hEntry').value=''; $('manualPnl').value=''; $('tradeNote').value='';
+  
+  saveState();
+  renderMainOut(); 
+  renderHedgeTables();
+});
+
+/* ================= Trade History & Analytics ================= */
+function renderHistory(){
+  const wins = history.filter(t=>t.netPnl > 0).length;
+  $('hs-winrate').textContent = history.length ? fmtN(wins / history.length * 100, 0) + '%' : '–';
+  const total = history.reduce((a,t)=>a+t.netPnl, 0);
+  $('hs-netpnl').textContent = fmt$(total);
+  $('hs-netpnl').className = 'v ' + (total > 0 ? 'pos' : (total < 0 ? 'neg' : 'neu'));
+  $('hs-total').textContent = history.length;
+  $('hs-defense').textContent = history.filter(t=>t.hedgeNet > 0).length;
+
+  const tb = document.querySelector('#tblHistory tbody');
+  tb.innerHTML = history.map(t=>`
+    <tr class="clickable" data-viewhist="${t.id}">
+      <td>${new Date(t.ts).toLocaleDateString()}</td>
+      <td>${PAIR_META[t.pair] ? PAIR_META[t.pair].label : t.pair}</td>
+      <td><span class="pill ${t.direction==='LONG'?'profit':'loss'}">${t.direction}</span></td>
+      <td style="color:${t.mainPnl>=0?'var(--profit)':'var(--loss)'}">${fmt$(t.mainPnl)}</td>
+      <td style="color:${t.hedgeNet>=0?'var(--profit)':'var(--loss)'}">${fmt$(t.hedgeNet)}</td>
+      <td style="color:${t.netPnl>=0?'var(--profit)':'var(--loss)'}">${fmt$(t.netPnl)}</td>
+      <td><span class="pill neutral">${t.exitType.toUpperCase()}</span></td>
+      <td class="action-cell"><button class="btn small danger" data-delhist="${t.id}" onclick="event.stopPropagation();">Delete</button></td>
+    </tr>`).join('');
+  $('emptyHistory').style.display = history.length ? 'none' : 'block';
+
+  tb.querySelectorAll('[data-viewhist]').forEach(tr=>tr.addEventListener('click', ()=>{
+    const id = parseInt(tr.dataset.viewhist);
+    openHistoryDetailModal(id);
+  }));
+
+  tb.querySelectorAll('[data-delhist]').forEach(b=>b.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    history = history.filter(t=>t.id!==parseInt(b.dataset.delhist)); 
+    saveState();
+    renderHistory();
+  }));
+}
+
+async function openHistoryDetailModal(tradeId){
+  const t = history.find(x=>x.id===tradeId);
+  if(!t) return;
+
+  const pairLabel = PAIR_META[t.pair] ? PAIR_META[t.pair].label : t.pair;
+  
+  const bodyHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="detail-grid">
+        <div class="detail-item"><span>종목 / 방향</span>${pairLabel} (${t.direction})</div>
+        <div class="detail-item"><span>종료 일시</span>${new Date(t.ts).toLocaleString()}</div>
+        <div class="detail-item"><span>진입가 / 메인 랏</span>${fmtPrice(t.entryPrice)} / ${fmtN(t.mainLot, 2)} Lot</div>
+        <div class="detail-item"><span>손절가 / 익절가</span>${fmtPrice(t.slPrice)} / ${fmtPrice(t.tpPrice)}</div>
+        <div class="detail-item"><span>메인 손익</span><b style="color:${t.mainPnl>=0?'var(--profit)':'var(--loss)'}">${fmt$(t.mainPnl)}</b></div>
+        <div class="detail-item"><span>헷지 손익</span><b style="color:${t.hedgeNet>=0?'var(--profit)':'var(--loss)'}">${fmt$(t.hedgeNet)}</b></div>
+        <div class="detail-item" style="grid-column: span 2;"><span>최종 네트 PnL</span><b style="font-size:16px;color:${t.netPnl>=0?'var(--profit)':'var(--loss)'}">${fmt$(t.netPnl)}</b></div>
+      </div>
+
+      <div>
+        <label style="display:block;font-size:12px;color:var(--text-2);margin-bottom:6px;font-weight:600;">Trade Rationale & Journal Note (진입 근거 및 메모)</label>
+        <textarea id="editHistNote" placeholder="메모가 없습니다. 작성 후 저장하세요.">${t.note || ''}</textarea>
+      </div>
+    </div>
+  `;
+
+  const ok = await showModal({
+    title: `Trade Detail #${t.id} - ${pairLabel}`,
+    message: '거래 상세 정보 및 진입 근거 메모입니다.',
+    bodyHTML,
+    type: 'info',
+    confirmText: '메모 저장',
+    cancelText: '닫기'
+  });
+
+  if(ok){
+    const noteEl = $('editHistNote');
+    if(noteEl){
+      t.note = noteEl.value;
+      saveState();
+      renderHistory();
+    }
+  }
+}
+
+$('btnResetAll').addEventListener('click', async ()=>{
+  const ok = await showModal({
+    title:'전체 데이터 초기화',
+    message:'모든 트레이드 히스토리와 설정이 삭제됩니다. (Notion 연동 설정은 유지됩니다) 계속하시겠습니까?',
+    type:'danger', confirmText:'초기화', cancelText:'취소'
+  });
+  if(!ok) return;
+  localStorage.removeItem('hedgeflow_state');
+  hedges=[]; partials=[]; history=[];
+  location.reload();
+});
+
+/* ================= Initialization ================= */
+window.addEventListener('DOMContentLoaded', ()=>{
+  // 1. Initialize pair options
+  const sel = $('pair');
+  sel.innerHTML = Object.keys(PAIR_META).map(k=>`<option value="${k}">${PAIR_META[k].label}</option>`).join('');
+  sel.addEventListener('change', handlePairChange);
+
+  // 2. Load saved state
+  loadState();
+
+  // 3. Sync initial pair selection & labels
+  handlePairChange();
+
+  // 4. Start FX fetch
+  refreshFX();
+  setInterval(refreshFX, 30*60*1000);
+
+  // 5. Notion settings UI
+  const notionCfg = getNotionConfig();
+  $('notionToken').value = notionCfg.token || '';
+  $('notionDbId').value = notionCfg.dbId || '';
+
+  $('btnSaveNotionConfig').addEventListener('click', ()=>{
+    saveNotionConfig($('notionToken').value.trim(), $('notionDbId').value.trim());
+    $('notionConfigStatus').textContent = '✅ 저장되었습니다.';
+    $('notionConfigStatus').style.color = 'var(--profit)';
+  });
+
+  $('btnTestNotionConfig').addEventListener('click', async ()=>{
+    const statusEl = $('notionConfigStatus');
+    const token = $('notionToken').value.trim();
+    const dbId = $('notionDbId').value.trim();
+    if(!token || !dbId){
+      statusEl.textContent = '⚠️ 토큰과 Database ID를 모두 입력하세요.';
+      statusEl.style.color = 'var(--loss)';
+      return;
+    }
+    statusEl.textContent = '연결 확인 중...';
+    statusEl.style.color = 'var(--text-2)';
+    saveNotionConfig(token, dbId);
+    const testResult = await saveTradeToNotion({
+      ts: new Date().toISOString(), pair: $('pair').value || 'NQ', direction: direction || 'LONG',
+      entryPrice: 0, slPrice: 0, tpPrice: 0, mainPnl: 0, hedgeNet: 0, netPnl: 0,
+      exitType: 'manual', note: 'HedgeFlow 연결 테스트 (삭제해도 됩니다)'
+    });
+    if(testResult){
+      statusEl.textContent = '✅ 연결 성공! Notion Database에 테스트 항목이 추가되었습니다.';
+      statusEl.style.color = 'var(--profit)';
+    } else {
+      statusEl.textContent = '❌ 연결 실패. 토큰/Database ID를 확인하거나 Integration이 해당 DB에 연결(Connect)되어 있는지 확인하세요.';
+      statusEl.style.color = 'var(--loss)';
+    }
+  });
+
+  // 5. Render outputs
+  renderMainOut();
+  renderHedgeTables();
+});
+</script>
+</body>
+</html>
