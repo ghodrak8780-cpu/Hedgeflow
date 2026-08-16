@@ -1,4 +1,13 @@
-자기가 파일을 수정했으면, commit 후 push를 해야 하는데 깃허브 웹에서 직접 수정하면 push를 안 해도 되는 거 같은데?
-니가 쓴 html 읽어봤는데 일단 거기엔 html, css, javascript가 있더라고. html이랑 css는 잘 모르겠고 javascript 정도는 읽어볼 만 해.
-나 할 거 하니까 시간이 많진 않아서 그냥 각만 봤어
-근데 웹 들어가 봤는데 뭐가 뭔지 잘 몰라서 실행은 못하겠더라.
+26/08/16 11:35
+
+파일 수정 방법:
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;} 
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;} 
+  .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .row-align-end{align-items:end;}
+이 부분 아래에
+  #btnAddPartial { transform: translateY(-14px); } 이 코드를 삽입
+
+사실 브렌치 기능 쓰면 되긴하는데
+만약 하고 싶은게 있으면 리포지토리 어디든 적어놓으면 해볼만 한 건 해볼게
+근데 막 어려운거 말고 이렇게 사소한 거부터 요청해보거라
