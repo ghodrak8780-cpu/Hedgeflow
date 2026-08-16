@@ -1,0 +1,106 @@
+Custom Modal System 부분
+
+// 사용자에게 커스텀 팝업창(Modal)을 보여주는 함수, {} 안에 여러 설정값을 객체 형태로 받아온다.
+// title       : 팝업 제목
+// message     : 팝업 메시지
+// bodyHTML    : 팝업 내부에 추가할 HTML
+// type        : 팝업 종류 (info / danger / success)
+// confirmText : 확인 버튼에 표시할 글자
+// cancelText  : 취소 버튼에 표시할 글자
+//
+// 예:
+// showModal({
+//   title: '매수 확인',
+//   message: '정말 매수하시겠습니까?',
+//   type: 'danger',
+//   confirmText: '매수',
+//   cancelText: '취소'
+// });
+function showModal({ title, ... cancelText = '취소' }) {
+  // Promise를 반환한다. Promise는 "지금 당장 결과가 나오지는 않지만, 나중에 결과가 결정될 것"이라는 객체다.
+  //여기서는 사용자가 확인/취소 버튼을 누를 때까지 기다리기 위해 사용한다.
+  return new Promise((resolve) => {
+
+    // HTML에서 각 요소를 찾아서 변수에 저장한다.
+    // $()는 이 코드 어딘가에 정의되어 있는 함수로 보인다.
+    // 아마 document.getElementById()를 간단하게 만든 함수일 가능성이 높다.
+    const overlay = $('customModalOverlay'); ...
+    const cancelBtn = $('customModalCancelBtn');
+
+    // 팝업 제목과 메시지를 HTML 요소에 넣는다.
+    // title이 없으면 '알림'을 사용한다.
+    // message가 없으면 빈 문자열을 사용한다.
+    titleEl.textContent = title || '알림';
+    msgEl.textContent = message || '';
+
+    // bodyHTML에 전달된 HTML 코드를 Modal의 본문 영역에 삽입한다.
+    bodyEl.innerHTML = bodyHTML;
+
+    // cancelText가 존재하는 경우 취소 버튼을 보여준다.
+    if (cancelText) { ... } else {
+      // cancelText가 없다면 취소 버튼을 숨긴다.
+      cancelBtn.style.display = 'none';
+    }
+
+    // 확인 버튼의 글자를 설정한다.
+    confirmBtn.textContent = confirmText;
+
+    // 팝업 종류에 따라 확인 버튼의 CSS 클래스를 설정한다.
+    // danger  → 빨간색 버튼
+    // success → 초록색 버튼
+    // info    → 기본 버튼
+    confirmBtn.className =
+      'btn small ' + ( ... );
+
+    // 지금까지 숨겨져 있던 Modal을 화면에 표시한다.
+    // CSS의 display:flex를 적용해서 팝업을 화면에 나타낸다.
+    overlay.style.display = 'flex';
+
+    // Modal을 닫을 때 필요한 정리 작업을 하는 함수
+    // 이벤트 리스너를 제거하는 것도 중요하다.
+    // 계속 추가되면 버튼을 한 번 눌렀는데 함수가 여러 번 실행되는
+    // 문제가 생길 수 있기 때문이다.
+    const cleanup = () => { ... };
+
+    // 확인 버튼을 눌렀을 때 실행되는 함수
+    const onConfirm = () => {
+
+      // Modal과 이벤트들을 정리한다.
+      cleanup();
+
+      // Promise의 결과를 true로 결정한다.
+      // 따라서 showModal()을 호출한 쪽에서는 "사용자가 확인을 눌렀다"라고 알 수 있다.
+      resolve(true);
+    };
+
+    // 취소 버튼을 눌렀을 때 실행되는 함수
+    const onCancel = () => {
+
+      // Modal과 이벤트들을 정리한다.
+      cleanup();
+
+      // Promise의 결과를 false로 결정한다.
+      // 따라서 showModal()을 호출한 쪽에서는 "사용자가 취소를 눌렀다"라고 알 수 있다.
+      resolve(false);
+    };
+
+    // Modal의 바깥쪽을 클릭했을 때 실행되는 함수
+    const onOverlayClick = (e) => {
+
+      // 클릭한 대상이 정말 overlay 자체라면 Modal을 취소한 것으로 처리한다.
+      // 즉 팝업 내용이 아닌 어두운 배경을 클릭하면 취소되는 구조다.
+      if (e.target === overlay) { ... }
+    };
+
+    // 확인 버튼을 클릭하면 onConfirm 실행
+    confirmBtn.addEventListener('click', onConfirm);
+
+    // 취소 버튼을 클릭하면 onCancel 실행
+    cancelBtn.addEventListener('click', onCancel);
+
+    // Modal 바깥을 클릭하면 onOverlayClick 실행
+    overlay.addEventListener('click', onOverlayClick);
+  });
+}
+
+showModal()을 호출하면 팝업을 띄우고 → 사용자가 확인/취소를 누를 때까지 기다렸다가 → 확인이면 true, 취소면 false를 반환하는 코드야.
