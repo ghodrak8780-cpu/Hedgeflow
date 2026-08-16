@@ -6,9 +6,11 @@
   .row4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
   .row-align-end{align-items:end;}
 이 부분 아래에
-  #btnAddPartial { transform: translateY(-14px); } 이 코드를 삽입
+  #btnAddPartial { transform: translateY(-14px); } 
+  #btnFinishTrade { transform: translateY(-14px); } 이 코드를 삽입
 
-사실 브렌치 기능 쓰면 되긴하는데
-만약 하고 싶은게 있으면 리포지토리 어디든 적어놓으면 해볼만 한 건 해볼게
-근데 막 어려운거 말고 이렇게 사소한 거부터 요청해보거라
-그 뭐 무슨 색 바꾸고 싶다 하지 않았나? 그거 어디 탭의 어디 버튼을 어떤 색으로 이렇게 적어보셈
+사실 브렌치 기능 쓰면 쉽게 되긴하는데, 니가 이 수정사항을 확인하고 메인 브렌치에 적용하고 싶으면 버튼 딸깍으로 적용 되게.
+다음에 내가 브렌치 쓴 다음에 어떻게 적용하는지 알려줄게.
+만약 하고 싶은게 있으면 리포지토리 어디든 적어놓으면 해볼만 한 건 해볼게.
+근데 막 어려운거 말고 이렇게 사소한 거부터 요청해보거라.
+그 뭐 무슨 색 바꾸고 싶다 하지 않았나? 그거 어디 탭의 어디 버튼을 어떤 색으로 이렇게 적어보셈.
